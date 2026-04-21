@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cadenza — Music Lessons Online</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet" />
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
+<style>
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  background: #09090b;
+  color: #f0f0f5;
+}
+
+.screen {
+  display: none;
+  height: 100vh;
+}
+
+.screen.active {
+  display: flex;
+}
+
+.center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+input, button {
+  font-family: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.auth-box {
+  background: #0f0f12;
+  padding: 30px;
+  border-radius: 12px;
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+input {
+  padding: 10px;
+  border-radius: 6px;
+  border: none;
+}
+
+button.primary {
+  background: #6366f1;
+  color: white;
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+}
+
+.dashboard {
+  display: flex;
+  width: 100%;
+}
+
+.sidebar {
+  width: 220px;
+  background: #0f0f12;
+  padding: 20px;
+}
+
+.main {
+  flex: 1;
+  padding: 20px;
+}
+
+.hidden {
+  display: none;
+}
+</style>
+</head>
+
+<body>
+
+<!-- AUTH -->
+<div id="auth" class="screen active center">
+  <div class="auth-box">
+    <h2>Sign In</h2>
+    <input id="email" type="email" placeholder="Email" />
+    <input id="password" type="password" placeholder="Password" />
+    <button class="primary" id="loginBtn">Login</button>
+    <button id="toggleRegister">Create account</button>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard" class="screen">
+  <div class="dashboard">
+    <div class="sidebar">
+      <h3>Cadenza</h3>
+      <button onclick="showView('home')">Home</button>
+      <button onclick="showView('call')">Call</button>
+      <button onclick="logout()">Logout</button>
+    </div>
+
+    <div class="main">
+      <div id="homeView">
+        <h2>Welcome</h2>
+        <p>Your room code:</p>
+        <h3 id="roomCode"></h3>
+      </div>
+
+      <div id="callView" class="hidden">
+        <h2>Call Room</h2>
+        <button onclick="startCall()">Start Call</button>
+        <div id="videoContainer"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let peer;
+let conn;
+
+function generateCode() {
+  return Math.random().toString(36).substring(2, 8).toUpperCase();
+}
+
+function showView(view) {
+  document.getElementById('homeView').classList.add('hidden');
+  document.getElementById('callView').classList.add('hidden');
+  document.getElementById(view + 'View').classList.remove('hidden');
+}
+
+function login() {
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+
+  if (!email || !password) {
+    alert('Fill in all fields');
+    return;
+  }
+
+  document.getElementById('auth').classList.remove('active');
+  document.getElementById('dashboard').classList.add('active');
+
+  document.getElementById('roomCode').innerText = generateCode();
+}
+
+function logout() {
+  document.getElementById('dashboard').classList.remove('active');
+  document.getElementById('auth').classList.add('active');
+}
+
+function startCall() {
+  peer = new Peer();
+
+  peer.on('open', id => {
+    console.log('My peer ID:', id);
+  });
+
+  navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+    .then(stream => {
+      const video = document.createElement('video');
+      video.srcObject = stream;
+      video.autoplay = true;
+      document.getElementById('videoContainer').appendChild(video);
+    })
+    .catch(err => console.error(err));
+}
+
+// events
+
+document.getElementById('loginBtn').addEventListener('click', login);
+</script>
+
+</body>
+</html>
