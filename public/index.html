@@ -929,6 +929,21 @@ body{font-family:var(--font);color:var(--text);font-size:14px;line-height:1.5;tr
 <div id="toast"></div>
 
 <script>
+console.log('Cadenza app loaded');
+
+window.onerror = function(message, source, lineno, colno, error) {
+  console.error('Cadenza global error:', message, 'at', source + ':' + lineno + ':' + colno, error);
+  const body = document.body;
+  if (body && !document.getElementById('cz-init-error')) {
+    const div = document.createElement('div');
+    div.id = 'cz-init-error';
+    div.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:#09090b;color:#f87171;font-family:system-ui,sans-serif;flex-direction:column;gap:12px;padding:24px;text-align:center';
+    div.innerHTML = '<svg style="width:40px;height:40px;fill:none;stroke:#f87171;stroke-width:1.5;stroke-linecap:round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><div style="font-size:16px;font-weight:600">Something went wrong</div><div style="font-size:13px;color:#a0a0b0;max-width:400px">The app failed to initialise. Check the browser console for details, then reload the page.</div><button onclick="location.reload()" style="margin-top:8px;padding:9px 20px;background:#6366f1;border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:600;cursor:pointer">Reload</button>';
+    body.appendChild(div);
+  }
+  return false;
+};
+
 // ══════════════════════════════════════════════════════
 //  CONSTANTS
 // ══════════════════════════════════════════════════════
@@ -986,9 +1001,18 @@ function initThemePicker(){
 //  API
 // ══════════════════════════════════════════════════════
 async function api(method,path,body){
-  const res=await fetch(path,{method,headers:{'Content-Type':'application/json',...(authToken?{'Authorization':`Bearer ${authToken}`}:{})}, ...(body?{body:JSON.stringify(body)}:{})});
+  let res;
+  try{
+    res=await fetch(path,{method,headers:{'Content-Type':'application/json',...(authToken?{'Authorization':`Bearer ${authToken}`}:{})}, ...(body?{body:JSON.stringify(body)}:{})});
+  }catch(networkErr){
+    console.error('Cadenza network error ['+method+' '+path+']:', networkErr);
+    throw new Error('Network error — check your connection');
+  }
   const data=await res.json();
-  if(!res.ok)throw new Error(data.error||'Request failed');
+  if(!res.ok){
+    console.error('Cadenza API error ['+method+' '+path+'] '+res.status+':', data.error||data);
+    throw new Error(data.error||'Request failed');
+  }
   return data;
 }
 function saveToken(t){authToken=t;localStorage.setItem('cz-token',t);}
@@ -1735,9 +1759,32 @@ document.querySelectorAll('.overlay').forEach(o=>o.onclick=e=>{if(e.target===o)c
 //  BOOT
 // ══════════════════════════════════════════════════════
 (async()=>{
-  const token=loadToken();
-  if(token){authToken=token;try{currentUser=await api('GET','/api/me');await launchDashboard();}catch{clearToken();showScreen('screen-auth');}}
-  else showScreen('screen-auth');
+  try{
+    console.log('Cadenza boot: starting');
+    const token=loadToken();
+    console.log('Cadenza boot: token present =', !!token);
+    if(token){
+      authToken=token;
+      try{
+        console.log('Cadenza boot: verifying token with /api/me');
+        currentUser=await api('GET','/api/me');
+        console.log('Cadenza boot: token valid, launching dashboard');
+        await launchDashboard();
+        console.log('Cadenza boot: dashboard launched');
+      }catch(e){
+        console.error('Cadenza boot: session restore failed, returning to auth screen:', e);
+        clearToken();
+        showScreen('screen-auth');
+      }
+    }else{
+      console.log('Cadenza boot: no token, showing auth screen');
+      showScreen('screen-auth');
+    }
+    console.log('Cadenza boot: complete');
+  }catch(e){
+    console.error('Cadenza boot: unexpected error:', e);
+    showScreen('screen-auth');
+  }
 })();
 
 // ══════════════════════════════════════════════════════
